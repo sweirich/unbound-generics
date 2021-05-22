@@ -1,3 +1,9 @@
+# BRANCH
+
+* Test with GHC-8.8.3
+* break out DisjointSet and FFM
+* lazy open at binding
+
 # NEXT
 
 * Add `Functor` instance for `Unbound.Generics.LocallyNameless.Internal.Iso.Exchange`
