@@ -1,4 +1,6 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
+
 -- |
 -- Module     : Unbound.Generics.LocallyNameless.Rec
 -- Copyright  : (c) 2014, Aleksey Kliger
@@ -10,20 +12,17 @@
 -- but additionally, the names in @p@ are scope over @p@.
 --
 -- The term @'TRec' p@ is shorthand for @'Bind' (Rec p) ()@
-{-# LANGUAGE DeriveGeneric #-}
 module Unbound.Generics.LocallyNameless.Rec
-       (
-         Rec
-       , rec
-       , unrec
-       , TRec (..)
-       ) where
+  ( Rec,
+    rec,
+    unrec,
+    TRec (..),
+  )
+where
 
-import Control.DeepSeq (NFData(..))
+import Control.DeepSeq (NFData (..))
+import Data.Monoid (All (..))
 import GHC.Generics (Generic)
-
-import Data.Monoid(All(..))
-
 import Unbound.Generics.LocallyNameless.Alpha
 import Unbound.Generics.LocallyNameless.Bind
 
@@ -32,13 +31,13 @@ import Unbound.Generics.LocallyNameless.Bind
 -- embedded within itself.  Useful for encoding e.g. lectrec and
 -- Agda's dot notation.
 newtype Rec p = Rec p
-              deriving (Generic, Eq)
+  deriving (Generic, Eq)
 
 instance NFData p => NFData (Rec p) where
   rnf (Rec p) = rnf p `seq` ()
 
 instance Show a => Show (Rec a) where
-  showsPrec _ (Rec a) = showString "[" . showsPrec 0 a . showString "]"
+  showsPrec _ (Rec a) = showString "[" . shows a . showString "]"
 
 -- | @TRec@ is a standalone variant of 'Rec': the only difference is
 --   that whereas @'Rec' p@ is a pattern type, @TRec p@
@@ -49,11 +48,10 @@ instance Show a => Show (Rec a) where
 --   alpha-Caml's @inner t@, and @'Shift' ('Embed' t)@ corresponds to
 --   alpha-Caml's @outer t@.
 newtype TRec p = TRec (Bind (Rec p) ())
-                 deriving (Generic)
+  deriving (Generic)
 
 instance Show a => Show (TRec a) where
-  showsPrec _ (TRec (B (Rec p) ())) = showString "[" . showsPrec 0 p . showString "]"
-
+  showsPrec _ (TRec (B (Rec p) ())) = showString "[" . shows p . showString "]"
 
 instance Alpha p => Alpha (Rec p) where
   isTerm _ = All False
@@ -62,7 +60,7 @@ instance Alpha p => Alpha (Rec p) where
   nthPatFind (Rec p) = nthPatFind p
   namePatFind (Rec p) = namePatFind p
 
-  open ctx b (Rec p) = Rec (open (incrLevelCtx ctx) b p)
+  openMulti ctx b (Rec p) = Rec (openMulti (incrLevelCtx ctx) b p)
   close ctx b (Rec p) = Rec (close (incrLevelCtx ctx) b p)
 
 instance Alpha p => Alpha (TRec p)

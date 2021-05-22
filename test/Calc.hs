@@ -18,6 +18,8 @@ import GHC.Generics (Generic)
 import Unbound.Generics.LocallyNameless
 import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf)
 
+import Debug.Trace
+
 -- variables will range over expressions
 type Var = Name Expr
 
@@ -77,7 +79,7 @@ whnf :: (
   Fresh m) => Env -> Expr -> m Expr
 whnf rho (V v) = case rho v of
   Just e -> return e
-  Nothing -> fail $ "unbound variable " ++ show v
+  Nothing -> fail "unbound variable"
 whnf _rho (C i) = return (C i)
 whnf rho (Add e1 e2) = do
   v1 <- whnf rho e1
@@ -133,21 +135,21 @@ ex2yc = close initialCtx (namePatFind (mkVar "y")) ex2y
 
 ex3x :: Expr
 ex3x = let x = mkVar "x"
-       in mkLet [(x, (C 1))] $ Add (V x) (C 2)
+       in mkLet [(x, C 1)] $ Add (V x) (C 2)
 
 ex3y :: Expr
 ex3y = let y = mkVar "y"
-       in mkLet [(y, (C 1))] $ Add (V y) (C 2)
+       in mkLet [(y, C 1)] $ Add (V y) (C 2)
 
 ex4 :: Expr
 ex4 = let
   x = mkVar "x"
   y = mkVar "y"
   in
-   mkLet [(y, (C 5))]
-   $ mkLet [(y, (C 200))
-           , (x, (Add (V y) -- refers to the outer y
-                  (C 6)))]
+   mkLet [(y, C 5)]
+   $ mkLet [(y, C 200)
+           , (x, Add (V y) -- refers to the outer y
+                  (C 6))]
    $ Add (V x) (V x) -- expect (C 22), not (C 412)
 
 ex4_ans :: Expr

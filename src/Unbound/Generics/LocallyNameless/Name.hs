@@ -1,3 +1,9 @@
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
+
 -- |
 -- Module     : Unbound.Generics.LocallyNameless.Name
 -- Copyright  : (c) 2014, Aleksey Kliger
@@ -6,28 +12,26 @@
 -- Stability  : experimental
 --
 -- Names stand for values.  They may be bound or free.
-{-# LANGUAGE DeriveDataTypeable
-             , DeriveGeneric
-             , ExistentialQuantification
-             , FlexibleContexts
-             , GADTs #-}
 module Unbound.Generics.LocallyNameless.Name
-       (
-         -- * Names over terms
-         Name(..)
-       , isFreeName
-         -- * Name construction
-       , string2Name
-       , s2n
-       , makeName
-         -- * Name inspection
-       , name2String
-       , name2Integer
-         -- * Heterogeneous names
-       , AnyName(..)
-       ) where
+  ( -- * Names over terms
+    Name (..),
+    isFreeName,
 
-import Control.DeepSeq (NFData(..))
+    -- * Name construction
+    string2Name,
+    s2n,
+    makeName,
+
+    -- * Name inspection
+    name2String,
+    name2Integer,
+
+    -- * Heterogeneous names
+    AnyName (..),
+  )
+where
+
+import Control.DeepSeq (NFData (..))
 import Data.Typeable (Typeable, gcast, typeOf)
 import GHC.Generics (Generic)
 
@@ -45,14 +49,14 @@ import GHC.Generics (Generic)
 -- may be extracted from patterns using
 -- 'Unbound.Generics.LocallyNameless.Alpha.isPat'.  Bound names
 -- cannot be.
--- 
-data Name a = Fn String !Integer    -- free names
-            | Bn !Integer !Integer  -- bound names / binding level + pattern index
-            deriving (Eq, Ord, Typeable, Generic)
+data Name a
+  = Fn String !Integer -- free names
+  | Bn !Integer !Integer -- bound names / binding level + pattern index
+  deriving (Eq, Ord, Typeable, Generic)
 
 instance NFData (Name a) where
-  rnf (Fn s n) = rnf s `seq` rnf n `seq` ()
-  rnf (Bn i j) = rnf i `seq` rnf j `seq` ()
+  rnf (Fn s n) = rnf s `seq` rnf n
+  rnf (Bn i j) = rnf i `seq` rnf j
 
 -- | Returns 'True' iff the given @Name a@ is free.
 isFreeName :: Name a -> Bool
@@ -82,9 +86,9 @@ name2String (Fn s _) = s
 name2String (Bn _ _) = error "Internal Error: cannot call name2String for bound names"
 
 instance Show (Name a) where
-  show (Fn "" n) = "_" ++ (show n)
+  show (Fn "" n) = "_" ++ show n
   show (Fn x 0) = x
-  show (Fn x n) = x ++ (show n)
+  show (Fn x n) = x ++ show n
   show (Bn x y) = show x ++ "@" ++ show y
 
 -- | An @AnyName@ is a name that stands for a term of some (existentially hidden) type.

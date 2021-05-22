@@ -1,4 +1,7 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
+
 -- |
 -- Module     : Unbound.Generics.LocallyNameless.Embed
 -- Copyright  : (c) 2014, Aleksey Kliger
@@ -7,16 +10,13 @@
 -- Stability  : experimental
 --
 -- The pattern @'Embed' t@ contains a term @t@.
-{-# LANGUAGE DeriveGeneric, TypeFamilies #-}
 module Unbound.Generics.LocallyNameless.Embed where
 
 import Control.Applicative (pure, (<$>))
-import Control.DeepSeq (NFData(..))
-import Data.Monoid (mempty, All(..))
-import Data.Profunctor (Profunctor(..))
-
+import Control.DeepSeq (NFData (..))
+import Data.Monoid (All (..), mempty)
+import Data.Profunctor (Profunctor (..))
 import GHC.Generics (Generic)
-
 import Unbound.Generics.LocallyNameless.Alpha
 import Unbound.Generics.LocallyNameless.Internal.Iso (iso)
 
@@ -37,6 +37,7 @@ newtype Embed t = Embed t deriving (Eq, Ord, Generic)
 class IsEmbed e where
   -- | The term type embedded in the embedding 'e'
   type Embedded e :: *
+
   -- | Insert or extract the embedded term.
   -- If you're not using the lens library, see 'Unbound.Generics.LocallyNameless.Operations.embed'
   -- and 'Unbound.Generics.LocallyNameless.Operations.unembed'
@@ -49,7 +50,7 @@ class IsEmbed e where
 instance IsEmbed (Embed t) where
   type Embedded (Embed t) = t
   embedded = iso (\(Embed t) -> t) Embed
-  
+
 instance NFData t => NFData (Embed t) where
   rnf (Embed t) = rnf t `seq` ()
 
@@ -65,36 +66,35 @@ instance Alpha t => Alpha (Embed t) where
 
   swaps' ctx perm (Embed t) =
     if isTermCtx ctx
-    then Embed t
-    else Embed (swaps' (termCtx ctx) perm t)
+      then Embed t
+      else Embed (swaps' (termCtx ctx) perm t)
 
   freshen' ctx p =
     if isTermCtx ctx
-    then error "LocallyNameless.freshen' called on a term"
-    else return (p, mempty)
+      then error "LocallyNameless.freshen' called on a term"
+      else return (p, mempty)
 
   lfreshen' ctx p cont =
     if isTermCtx ctx
-    then error "LocallyNameless.lfreshen' called on a term"
-    else cont p mempty
-
+      then error "LocallyNameless.lfreshen' called on a term"
+      else cont p mempty
 
   aeq' ctx (Embed x) (Embed y) = aeq' (termCtx ctx) x y
 
   fvAny' ctx afa ex@(Embed x) =
     if isTermCtx ctx
-    then pure ex
-    else Embed <$> fvAny' (termCtx ctx) afa x
+      then pure ex
+      else Embed <$> fvAny' (termCtx ctx) afa x
 
   close ctx b (Embed x) =
     if isTermCtx ctx
-    then error "LocallyNameless.close on Embed"
-    else Embed (close (termCtx ctx) b x)
+      then error "LocallyNameless.close on Embed"
+      else Embed (close (termCtx ctx) b x)
 
-  open ctx b (Embed x) =
+  openMulti ctx b (Embed x) =
     if isTermCtx ctx
-    then error "LocallyNameless.open on Embed"
-    else Embed (open (termCtx ctx) b x)
+      then error "LocallyNameless.open on Embed"
+      else Embed (openMulti (termCtx ctx) b x)
 
   nthPatFind _ = mempty
   namePatFind _ = mempty
