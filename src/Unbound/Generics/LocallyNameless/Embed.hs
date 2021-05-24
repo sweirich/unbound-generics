@@ -55,7 +55,7 @@ instance NFData t => NFData (Embed t) where
   rnf (Embed t) = rnf t `seq` ()
 
 instance Show a => Show (Embed a) where
-  showsPrec _ (Embed a) = showString "{" . showsPrec 0 a . showString "}"
+  showsPrec _ (Embed a) = showString "{" . shows a . showString "}"
 
 instance Alpha t => Alpha (Embed t) where
   isPat (Embed t) = if getAll (isTerm t) then mempty else inconsistentDisjointSet
@@ -86,10 +86,10 @@ instance Alpha t => Alpha (Embed t) where
       then pure ex
       else Embed <$> fvAny' (termCtx ctx) afa x
 
-  close ctx b (Embed x) =
+  closeMulti ctx b (Embed x) =
     if isTermCtx ctx
       then error "LocallyNameless.close on Embed"
-      else Embed (close (termCtx ctx) b x)
+      else Embed (closeMulti (termCtx ctx) b x)
 
   openMulti ctx b (Embed x) =
     if isTermCtx ctx

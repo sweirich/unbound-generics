@@ -64,7 +64,7 @@ instance Alpha e => Alpha (Shift e) where
 
   fvAny' ctx afa (Shift e) = Shift <$> fvAny' ctx afa e
 
-  close ctx b se@(Shift e)
+  closeMulti ctx b se@(Shift e)
     | isTermCtx ctx =
       error "LocallyNameless.close on Shift"
     | isZeroLevelCtx ctx =
@@ -79,7 +79,7 @@ instance Alpha e => Alpha (Shift e) where
       --   Bind P (Bind A B) for some P and B,
       -- the free vars of e1 in A are bound by P.
       se
-    | otherwise = Shift (close (decrLevelCtx ctx) b e)
+    | otherwise = Shift (closeMulti (decrLevelCtx ctx) b e)
 
   openMulti ctx b se@(Shift e)
     | isTermCtx ctx =

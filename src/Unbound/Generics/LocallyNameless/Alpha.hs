@@ -16,6 +16,7 @@ module Unbound.Generics.LocallyNameless.Alpha
   ( -- * Name-aware opertions
     Alpha (..),
     open,
+    close,
 
     -- * Binder variables
     DisjointSet (..),
@@ -39,7 +40,7 @@ module Unbound.Generics.LocallyNameless.Alpha
     -- * Internal
     gaeq,
     gfvAny,
-    gclose,
+    gcloseMulti,
     gopenMulti,
     gisPat,
     gisTerm,
@@ -140,10 +141,10 @@ class (Show a) => Alpha a where
   {-# INLINE fvAny' #-}
 
   -- | Replace free names by bound names.
-  close :: AlphaCtx -> NamePatFind -> a -> a
-  default close :: (Generic a, GAlpha (Rep a)) => AlphaCtx -> NamePatFind -> a -> a
-  close c b = to . gclose c b . from
-  {-# INLINE close #-}
+  closeMulti :: AlphaCtx -> [NamePatFind] -> a -> a
+  default closeMulti :: (Generic a, GAlpha (Rep a)) => AlphaCtx -> [NamePatFind] -> a -> a
+  closeMulti c b = to . gcloseMulti c b . from
+  {-# INLINE closeMulti #-}
 
   -- | Replace bound names by free names.
   -- Can open multiple indices at once
@@ -234,6 +235,10 @@ instance Monoid NthPatFind where
 open :: Alpha a => AlphaCtx -> NthPatFind -> a -> a
 open ctx p = openMulti ctx [p]
 
+close :: Alpha a => AlphaCtx -> NamePatFind -> a -> a
+close ctx p = closeMulti ctx [p]
+
+
 -- | The result of @'namePatFind' a x@ is either @Left i@ if @a@ is a pattern that
 -- contains @i@ free names none of which are @x@, or @Right j@ if @x@ is the @j@th name
 -- in @a@
@@ -264,7 +269,7 @@ class GAlpha f where
 
   gfvAny :: (Contravariant g, Applicative g) => AlphaCtx -> (AnyName -> g AnyName) -> f a -> g (f a)
 
-  gclose :: AlphaCtx -> NamePatFind -> f a -> f a
+  gcloseMulti :: AlphaCtx -> [NamePatFind] -> f a -> f a
   gopenMulti :: AlphaCtx -> [NthPatFind] -> f a -> f a
 
   gisPat :: f a -> DisjointSet AnyName
@@ -287,8 +292,8 @@ instance (Alpha c) => GAlpha (K1 i c) where
   gfvAny ctx nfn = fmap K1 . fvAny' ctx nfn . unK1
   {-# INLINE gfvAny #-}
 
-  gclose ctx b = K1 . close ctx b . unK1
-  {-# INLINE gclose #-}
+  gcloseMulti ctx b = K1 . closeMulti ctx b . unK1
+  {-# INLINE gcloseMulti #-}
   gopenMulti ctx b = K1 . openMulti ctx b . unK1
   {-# INLINE gopenMulti #-}
 
@@ -319,8 +324,8 @@ instance GAlpha f => GAlpha (M1 i c f) where
   gfvAny ctx nfn = fmap M1 . gfvAny ctx nfn . unM1
   {-# INLINE gfvAny #-}
 
-  gclose ctx b = M1 . gclose ctx b . unM1
-  {-# INLINE gclose #-}
+  gcloseMulti ctx b = M1 . gcloseMulti ctx b . unM1
+  {-# INLINE gcloseMulti #-}
   gopenMulti ctx b = M1 . gopenMulti ctx b . unM1
   {-# INLINE gopenMulti #-}
 
@@ -351,7 +356,7 @@ instance GAlpha U1 where
 
   gfvAny _ctx _nfn _ = pure U1
 
-  gclose _ctx _b _ = U1
+  gcloseMulti _ctx _b _ = U1
   gopenMulti _ctx _b _ = U1
 
   gisPat _ = mempty
@@ -374,7 +379,7 @@ instance GAlpha V1 where
 
   gfvAny _ctx _nfn = pure
 
-  gclose _ctx _b _ = undefined
+  gcloseMulti _ctx _b _ = undefined
   gopenMulti _ctx _b _ = undefined
 
   gisPat _ = mempty
@@ -401,8 +406,8 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :*: g) where
       <*> gfvAny ctx nfn g
   {-# INLINE gfvAny #-}
 
-  gclose ctx b (f :*: g) = gclose ctx b f :*: gclose ctx b g
-  {-# INLINE gclose #-}
+  gcloseMulti ctx b (f :*: g) = gcloseMulti ctx b f :*: gcloseMulti ctx b g
+  {-# INLINE gcloseMulti #-}
   gopenMulti ctx b (f :*: g) = gopenMulti ctx b f :*: gopenMulti ctx b g
   {-# INLINE gopenMulti #-}
 
@@ -445,9 +450,9 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :+: g) where
   gfvAny ctx nfn (R1 g) = fmap R1 (gfvAny ctx nfn g)
   {-# INLINE gfvAny #-}
 
-  gclose ctx b (L1 f) = L1 (gclose ctx b f)
-  gclose ctx b (R1 g) = R1 (gclose ctx b g)
-  {-# INLINE gclose #-}
+  gcloseMulti ctx b (L1 f) = L1 (gcloseMulti ctx b f)
+  gcloseMulti ctx b (R1 g) = R1 (gcloseMulti ctx b g)
+  {-# INLINE gcloseMulti #-}
   gopenMulti ctx b (L1 f) = L1 (gopenMulti ctx b f)
   gopenMulti ctx b (R1 g) = R1 (gopenMulti ctx b g)
   {-# INLINE gopenMulti #-}
@@ -496,7 +501,7 @@ instance Alpha Int where
 
   fvAny' _ctx _nfn i = pure i
 
-  close _ctx _b i = i
+  closeMulti _ctx _b i = i
   openMulti _ctx _b i = i
 
   isPat _ = mempty
@@ -516,7 +521,7 @@ instance Alpha Char where
 
   fvAny' _ctx _nfn i = pure i
 
-  close _ctx _b i = i
+  closeMulti _ctx _b i = i
   openMulti _ctx _b i = i
 
   isPat _ = mempty
@@ -536,7 +541,7 @@ instance Alpha Integer where
 
   fvAny' _ctx _nfn i = pure i
 
-  close _ctx _b i = i
+  closeMulti _ctx _b i = i
   openMulti _ctx _b i = i
 
   isPat _ = mempty
@@ -556,7 +561,7 @@ instance Alpha Float where
 
   fvAny' _ctx _nfn i = pure i
 
-  close _ctx _b i = i
+  closeMulti _ctx _b i = i
   openMulti _ctx _b i = i
 
   isPat _ = mempty
@@ -576,7 +581,7 @@ instance Alpha Double where
 
   fvAny' _ctx _nfn i = pure i
 
-  close _ctx _b i = i
+  closeMulti _ctx _b i = i
   openMulti _ctx _b i = i
 
   isPat _ = mempty
@@ -596,7 +601,7 @@ instance (Integral n, Alpha n) => Alpha (Ratio n) where
 
   fvAny' _ctx _nfn i = pure i
 
-  close _ctx _b i = i
+  closeMulti _ctx _b i = i
   openMulti _ctx _b i = i
 
   isPat _ = mempty
@@ -634,6 +639,13 @@ instance
 -- ============================================================
 -- Alpha instances for interesting types
 
+runNamePatFinds :: Integer -> [NamePatFind] -> AnyName -> Maybe (Integer, Integer)
+runNamePatFinds _ [] _ = Nothing
+runNamePatFinds n (npf : rest) a =
+  case runNamePatFind npf a of
+    Left _ -> runNamePatFinds (n+1) rest a
+    Right j -> Just (n, j)
+
 instance Typeable a => Alpha (Name a) where
   aeq' ctx n1 n2 =
     not (isTermCtx ctx) -- in terms, better be the same name
@@ -645,23 +657,27 @@ instance Typeable a => Alpha (Name a) where
       then contramap AnyName (nfn (AnyName nm))
       else pure nm
 
-  openMulti ctx vs a@(Bn i j) =
-    if ctxMode ctx == Term && i >= ctxLevel ctx
-      then case runNthPatFind (vs !! fromInteger (i - ctxLevel ctx)) j of
+  openMulti ctx vn a@(Bn i j) =
+    let k = ctxLevel ctx in
+    if ctxMode ctx == Term && i >= k then
+      (if length vn > fromInteger (i - k)
+      then case runNthPatFind (vn !! fromInteger (i - k)) j of
         Right (AnyName nm) -> case gcast nm of
           Just nm' -> nm'
           Nothing -> error "LocallyNameless.open: inconsistent sorts"
         Left _ -> error "LocallyNameless.open : inconsistency - pattern had too few variables"
+      else
+        error ("LocallyNameless.open: length vn =" ++ show (length vn) ++ " i= " ++ show i ++ " ctxLevel=" ++ show (ctxLevel ctx)))
       else a
   openMulti _ctx _ a = a
 
-  close ctx b a@(Fn _ _) =
+  closeMulti ctx xs a@(Fn _ _) =
     if isTermCtx ctx
-      then case runNamePatFind b (AnyName a) of
-        Right k -> Bn (ctxLevel ctx) k
-        Left _ -> a
+      then case runNamePatFinds 0 xs (AnyName a) of
+             Nothing -> a
+             Just (n, j) -> Bn (n + ctxLevel ctx) j
       else a
-  close _ctx _ a = a
+  closeMulti _ctx _ a = a
 
   isPat n =
     if isFreeName n
@@ -752,7 +768,7 @@ instance Alpha AnyName where
 
   openMulti ctx b (AnyName nm) = AnyName (openMulti ctx b nm)
 
-  close ctx b (AnyName nm) = AnyName (close ctx b nm)
+  closeMulti ctx b (AnyName nm) = AnyName (closeMulti ctx b nm)
 
   nthPatFind nm = NthPatFind $ \i ->
     if i == 0 then Right nm else Left $! i - 1

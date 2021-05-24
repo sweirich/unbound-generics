@@ -50,8 +50,9 @@ instance Show a => Show (Rec a) where
 newtype TRec p = TRec (Bind (Rec p) ())
   deriving (Generic)
 
-instance Show a => Show (TRec a) where
+instance (Alpha a, Show a) => Show (TRec a) where
   showsPrec _ (TRec (B (Rec p) ())) = showString "[" . shows p . showString "]"
+  showsPrec p (TRec b) = showsPrec p (TRec (forceBind b))
 
 instance Alpha p => Alpha (Rec p) where
   isTerm _ = All False
@@ -61,7 +62,7 @@ instance Alpha p => Alpha (Rec p) where
   namePatFind (Rec p) = namePatFind p
 
   openMulti ctx b (Rec p) = Rec (openMulti (incrLevelCtx ctx) b p)
-  close ctx b (Rec p) = Rec (close (incrLevelCtx ctx) b p)
+  closeMulti ctx b (Rec p) = Rec (closeMulti (incrLevelCtx ctx) b p)
 
 instance Alpha p => Alpha (TRec p)
 

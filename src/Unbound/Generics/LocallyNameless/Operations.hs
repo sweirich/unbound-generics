@@ -135,9 +135,10 @@ unbind :: (Alpha p, Alpha t, Fresh m) => Bind p t -> m (p, t)
 unbind (B p t) = do
   (p', _) <- freshen p
   return (p', open initialCtx (nthPatFind p') t)
-unbind (BindOpen vs p t) = do
-  (p', _) <- freshen (openMulti (patternCtx initialCtx) vs p)
-  return (p', openMulti initialCtx ([nthPatFind p'] <> vs) t)
+unbind (BindOpen ctx vs p t) = do
+  (p', _) <- freshen (openMulti (patternCtx ctx) vs p)
+  return (p', openMulti ctx ([nthPatFind p'] <> vs) t)
+unbind b = unbind (forceBind b)
 
 -- | @lunbind@ opens a binding in an 'LFresh' monad, ensuring that the
 --   names chosen for the binders are /locally/ fresh.  The components

@@ -21,4 +21,4 @@ import Unbound.Generics.LocallyNameless.Bind
 --   names for the binders.
 unsafeUnbind :: (Alpha p, Alpha t) => Bind p t -> (p, t)
 unsafeUnbind (B p t) = (p, open initialCtx (nthPatFind p) t)
-       
+unsafeUnbind b = unsafeUnbind (forceBind b)       

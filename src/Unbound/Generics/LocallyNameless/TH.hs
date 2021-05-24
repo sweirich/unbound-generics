@@ -53,7 +53,7 @@ makeClosedAlpha tyName = do
       methods =
         [ valueD (mkName "aeq'") [e|const (==)|],
           valueD (mkName "fvAny'") [e|\_ctx _nfn -> pure|],
-          valueD 'close [e|\_ctx _b -> id|],
+          valueD 'closeMulti [e|\_ctx _b -> id|],
           valueD 'openMulti [e|\_ctx _b -> id|],
           valueD 'isPat [e|const mempty|],
           valueD 'isTerm [e|const mempty|],

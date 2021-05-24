@@ -45,7 +45,7 @@ instance Eq Fun where
 instance Alpha ArithOp where
   aeq' _ctx (ArithOp s1 _) (ArithOp s2 _) = s1 == s2
   fvAny' _ctx _nfn x = pure x
-  close _ctx _b x = x
+  closeMulti _ctx _b x = x
   openMulti _ctx _b x = x
   isPat _ = mempty
   isTerm _ = mempty

@@ -186,9 +186,9 @@ instance (Subst c e) => Subst c (Shift e) where
 
 instance (Subst c b, Subst c a, Alpha a, Alpha b) => Subst c (Bind a b) where
   subst x b (B p t) = B (subst x b p) (subst x b t)
-  subst x a b = subst x a (forceBind initialCtx b)
+  subst x a b = subst x a (forceBind b)
   substs ss (B p t) = B (substs ss p) (substs ss t)
-  substs ss b = substs ss (forceBind initialCtx b)
+  substs ss b = substs ss (forceBind b)
 
 instance (Subst c p1, Subst c p2) => Subst c (Rebind p1 p2)
 
