@@ -51,7 +51,7 @@ import GHC.Generics (Generic)
 -- cannot be.
 data Name a
   = Fn String !Integer -- free names
-  | Bn !Integer !Integer -- bound names / binding level + pattern index
+  | Bn !Int !Int -- bound names / binding level + pattern index
   deriving (Eq, Ord, Typeable, Generic)
 
 instance NFData (Name a) where

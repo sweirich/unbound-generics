@@ -2,7 +2,9 @@
 
 * Test with GHC-8.8.3
 * break out DisjointSet and FFM
-* lazy open at binding
+* lazy open/close at binding
+* Integer -> Int for Bound name levels and pattern indices
+* more inline pragmas
 
 # NEXT
 

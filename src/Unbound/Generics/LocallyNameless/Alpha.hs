@@ -1,7 +1,10 @@
 {-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeOperators #-}
+{-# OPTIONS_GHC -fexpose-all-unfoldings #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -84,7 +87,7 @@ import Unbound.Generics.PermM
 --
 -- The context records whether we are currently operating on terms or patterns,
 -- and how many binding levels we've descended.
-data AlphaCtx = AlphaCtx {ctxMode :: !Mode, ctxLevel :: !Integer}
+data AlphaCtx = AlphaCtx {ctxMode :: !Mode, ctxLevel :: !Int}
 
 data Mode = Term | Pat
   deriving (Eq)
@@ -93,31 +96,38 @@ data Mode = Term | Pat
 -- work on terms and we are under no binders.
 initialCtx :: AlphaCtx
 initialCtx = AlphaCtx {ctxMode = Term, ctxLevel = 0}
+{-# INLINE initialCtx #-}
 
 -- | Switches to a context where we expect to operate on patterns.
 patternCtx :: AlphaCtx -> AlphaCtx
 patternCtx ctx = ctx {ctxMode = Pat}
+{-# INLINE patternCtx #-}
 
 -- | Switches to a context where we expect to operate on terms.
 termCtx :: AlphaCtx -> AlphaCtx
 termCtx ctx = ctx {ctxMode = Term}
+{-# INLINE termCtx #-}
 
 -- | Returns 'True' iff we are in a context where we expect to see terms.
 isTermCtx :: AlphaCtx -> Bool
 isTermCtx AlphaCtx {ctxMode = Term} = True
 isTermCtx _ = False
+{-# INLINE isTermCtx #-}
 
 -- | Increment the number of binders that we are operating under.
 incrLevelCtx :: AlphaCtx -> AlphaCtx
 incrLevelCtx ctx = ctx {ctxLevel = 1 + ctxLevel ctx}
+{-# INLINE incrLevelCtx #-}
 
 -- | Decrement the number of binders that we are operating under.
 decrLevelCtx :: AlphaCtx -> AlphaCtx
 decrLevelCtx ctx = ctx {ctxLevel = ctxLevel ctx - 1}
+{-# INLINE decrLevelCtx #-}
 
 -- | Are we operating under no binders?
 isZeroLevelCtx :: AlphaCtx -> Bool
 isZeroLevelCtx ctx = ctxLevel ctx == 0
+{-# INLINE isZeroLevelCtx #-}
 
 -- | Types that are instances of @Alpha@ may participate in name representation.
 --
@@ -210,16 +220,18 @@ class (Show a) => Alpha a where
   freshen' :: Fresh m => AlphaCtx -> a -> m (a, Perm AnyName)
   default freshen' :: (Generic a, GAlpha (Rep a), Fresh m) => AlphaCtx -> a -> m (a, Perm AnyName)
   freshen' ctx = retractFFM . fmap (first to) . gfreshen ctx . from
-
+  {-# INLINE freshen' #-}
+  
   -- | See 'Unbound.Generics.LocallyNameless.Operations.acompare'. An alpha-respecting total order on terms involving binders.
   acompare' :: AlphaCtx -> a -> a -> Ordering
   default acompare' :: (Generic a, GAlpha (Rep a)) => AlphaCtx -> a -> a -> Ordering
   acompare' c = gacompare c `on` from
-
+  {-# INLINE acompare' #-}
+  
 -- | The result of @'nthPatFind' a i@ is @Left k@ where @i-k@ is the
 -- number of names in pattern @a@ (with @k < i@) or @Right x@ where @x@
 -- is the @i@th name in @a@
-newtype NthPatFind = NthPatFind {runNthPatFind :: Integer -> Either Integer AnyName}
+newtype NthPatFind = NthPatFind {runNthPatFind :: Int -> Either Int AnyName}
 
 -- | @since 0.3.2
 instance Sem.Semigroup NthPatFind where
@@ -234,10 +246,11 @@ instance Monoid NthPatFind where
 
 open :: Alpha a => AlphaCtx -> NthPatFind -> a -> a
 open ctx p = openMulti ctx [p]
+{-# INLINE open #-}
 
 close :: Alpha a => AlphaCtx -> NamePatFind -> a -> a
 close ctx p = closeMulti ctx [p]
-
+{-# INLINE close #-}
 
 -- | The result of @'namePatFind' a x@ is either @Left i@ if @a@ is a pattern that
 -- contains @i@ free names none of which are @x@, or @Right j@ if @x@ is the @j@th name
@@ -247,7 +260,7 @@ newtype NamePatFind = NamePatFind
       AnyName ->
       -- Left - names skipped over
       -- Right - index of the name we found
-      Either Integer Integer
+      Either Int Int
   }
 
 -- | @since 0.3.2
@@ -316,7 +329,8 @@ instance (Alpha c) => GAlpha (K1 i c) where
   {-# INLINE glfreshen #-}
 
   gacompare ctx (K1 c1) (K1 c2) = acompare' ctx c1 c2
-
+  {-# INLINE gacompare #-}
+  
 instance GAlpha f => GAlpha (M1 i c f) where
   gaeq ctx (M1 f1) (M1 f2) = gaeq ctx f1 f2
   {-# INLINE gaeq #-}
@@ -349,7 +363,8 @@ instance GAlpha f => GAlpha (M1 i c f) where
   {-# INLINE glfreshen #-}
 
   gacompare ctx (M1 f1) (M1 f2) = gacompare ctx f1 f2
-
+  {-# INLINE gacompare #-}
+  
 instance GAlpha U1 where
   gaeq _ctx _ _ = True
   {-# INLINE gaeq #-}
@@ -372,6 +387,7 @@ instance GAlpha U1 where
   glfreshen _ctx _ cont = cont U1 mempty
 
   gacompare _ctx _ _ = EQ
+  {-# INLINE gacompare #-}  
 
 instance GAlpha V1 where
   gaeq _ctx _ _ = False
@@ -439,6 +455,7 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :*: g) where
 
   gacompare ctx (f1 :*: g1) (f2 :*: g2) =
     gacompare ctx f1 f2 <> gacompare ctx g1 g2
+  {-# INLINE gacompare #-}
 
 instance (GAlpha f, GAlpha g) => GAlpha (f :+: g) where
   gaeq ctx (L1 f1) (L1 f2) = gaeq ctx f1 f2
@@ -495,6 +512,33 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :+: g) where
 
 -- ============================================================
 -- Alpha instances for the usual types
+
+newtype Closed a = Closed a
+  deriving (Eq, Ord, Show)
+
+instance (Show a, Eq a, Ord a) => Alpha (Closed a) where
+  aeq' _ctx i j = i == j
+
+  fvAny' _ctx _nfn i = pure i
+
+  closeMulti _ctx _b i = i
+  openMulti _ctx _b i = i
+
+  isPat _ = mempty
+  isTerm _ = mempty
+
+  nthPatFind _ = mempty
+  namePatFind _ = mempty
+
+  swaps' _ctx _p i = i
+  freshen' _ctx i = return (i, mempty)
+  lfreshen' _ctx i cont = cont i mempty
+
+  acompare' _ctx i j = compare i j
+
+
+-- Unfortunately, we cannot use DerivingVia to use the above instance to create easy
+-- instances for closed types
 
 instance Alpha Int where
   aeq' _ctx i j = i == j
@@ -616,13 +660,49 @@ instance (Integral n, Alpha n) => Alpha (Ratio n) where
 
   acompare' _ctx i j = compare i j
 
-instance Alpha Bool
+instance Alpha Bool where
+  aeq' _ctx i j = i == j
+
+  fvAny' _ctx _nfn i = pure i
+
+  closeMulti _ctx _b i = i
+  openMulti _ctx _b i = i
+
+  isPat _ = mempty
+  isTerm _ = mempty
+
+  nthPatFind _ = mempty
+  namePatFind _ = mempty
+
+  swaps' _ctx _p i = i
+  freshen' _ctx i = return (i, mempty)
+  lfreshen' _ctx i cont = cont i mempty
+
+  acompare' _ctx i j = compare i j
+
+instance Alpha () where
+  aeq' _ctx i j = i == j
+
+  fvAny' _ctx _nfn i = pure i
+
+  closeMulti _ctx _b i = i
+  openMulti _ctx _b i = i
+
+  isPat _ = mempty
+  isTerm _ = mempty
+
+  nthPatFind _ = mempty
+  namePatFind _ = mempty
+
+  swaps' _ctx _p i = i
+  freshen' _ctx i = return (i, mempty)
+  lfreshen' _ctx i cont = cont i mempty
+
+  acompare' _ctx i j = compare i j
 
 instance Alpha a => Alpha (Maybe a)
 
 instance Alpha a => Alpha [a]
-
-instance Alpha ()
 
 instance (Alpha a, Alpha b) => Alpha (Either a b)
 
@@ -639,7 +719,7 @@ instance
 -- ============================================================
 -- Alpha instances for interesting types
 
-runNamePatFinds :: Integer -> [NamePatFind] -> AnyName -> Maybe (Integer, Integer)
+runNamePatFinds :: Int -> [NamePatFind] -> AnyName -> Maybe (Int, Int)
 runNamePatFinds _ [] _ = Nothing
 runNamePatFinds n (npf : rest) a =
   case runNamePatFind npf a of
@@ -660,8 +740,8 @@ instance Typeable a => Alpha (Name a) where
   openMulti ctx vn a@(Bn i j) =
     let k = ctxLevel ctx in
     if ctxMode ctx == Term && i >= k then
-      (if length vn > fromInteger (i - k)
-      then case runNthPatFind (vn !! fromInteger (i - k)) j of
+      (if length vn > (i - k)
+      then case runNthPatFind (vn !! (i - k)) j of
         Right (AnyName nm) -> case gcast nm of
           Just nm' -> nm'
           Nothing -> error "LocallyNameless.open: inconsistent sorts"

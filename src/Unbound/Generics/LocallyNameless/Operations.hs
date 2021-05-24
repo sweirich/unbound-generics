@@ -75,10 +75,12 @@ import Unbound.Generics.PermM
 -- | @'aeq' t1 t2@ returns @True@ iff @t1@ and @t2@ are alpha-equivalent terms.
 aeq :: Alpha a => a -> a -> Bool
 aeq = aeq' initialCtx
+{-# INLINE aeq #-}
 
 -- | An alpha-respecting total order on terms involving binders.
 acompare :: Alpha a => a -> a -> Ordering
 acompare = acompare' initialCtx
+{-# INLINE acompare #-}
 
 -- | @'fvAny'@ returns a fold over any names in a term @a@.
 --
@@ -87,6 +89,7 @@ acompare = acompare' initialCtx
 -- @
 fvAny :: (Alpha a, Contravariant f, Applicative f) => (AnyName -> f AnyName) -> a -> f a
 fvAny = fvAny' initialCtx
+{-# INLINE fvAny #-}
 
 -- | @'fv'@ returns the free @b@ variables of term @a@.
 --
@@ -103,12 +106,14 @@ fv = fvAny . justFiltered f
   where
     f :: AnyName -> Maybe (Name b)
     f (AnyName n) = cast n
+{-# INLINE fv #-}
 
 -- | Freshen a pattern by replacing all old binding 'Name's with new
 --   fresh 'Name's, returning a new pattern and a @'Perm' 'Name'@
 --   specifying how 'Name's were replaced.
 freshen :: (Alpha p, Fresh m) => p -> m (p, Perm AnyName)
 freshen = freshen' (patternCtx initialCtx)
+{-# INLINE freshen #-}
 
 -- | \"Locally\" freshen a pattern, replacing all binding names with
 --   new names that are not already \"in scope\". The second argument
@@ -118,14 +123,17 @@ freshen = freshen' (patternCtx initialCtx)
 --   names just generated.
 lfreshen :: (Alpha p, LFresh m) => p -> (p -> Perm AnyName -> m b) -> m b
 lfreshen = lfreshen' (patternCtx initialCtx)
+{-# INLINE lfreshen #-}
 
 -- | Apply the given permutation of variable names to the given term.
 swaps :: Alpha t => Perm AnyName -> t -> t
 swaps = swaps' initialCtx
+{-# INLINE swaps #-}
 
 -- | @'bind' p t@ closes over the variables of pattern @p@ in the term @t@
 bind :: (Alpha p, Alpha t) => p -> t -> Bind p t
 bind p t = B p (close initialCtx (namePatFind p) t)
+{-# INLINE bind #-}
 
 -- | @'unbind' b@ lets you descend beneath a binder @b :: 'Bind' p t@
 -- by returning the pair of the pattern @p@ and the term @t@ where the
@@ -139,6 +147,7 @@ unbind (BindOpen ctx vs p t) = do
   (p', _) <- freshen (openMulti (patternCtx ctx) vs p)
   return (p', openMulti ctx ([nthPatFind p'] <> vs) t)
 unbind b = unbind (forceBind b)
+{-# INLINE unbind #-}
 
 -- | @lunbind@ opens a binding in an 'LFresh' monad, ensuring that the
 --   names chosen for the binders are /locally/ fresh.  The components
@@ -151,6 +160,10 @@ unbind b = unbind (forceBind b)
 lunbind :: (LFresh m, Alpha p, Alpha t) => Bind p t -> ((p, t) -> m c) -> m c
 lunbind (B p t) cont =
   lfreshen p (\x _ -> cont (x, open initialCtx (nthPatFind x) t))
+lunbind (BindOpen ctx vs p t) cont =
+  lfreshen p (\x _ -> cont (x, openMulti ctx ([nthPatFind x] <> vs) t))
+lunbind b cont = lunbind (forceBind b) cont  
+{-# INLINE lunbind #-}
 
 -- | Simultaneously unbind two patterns in two terms, returning 'Nothing' if
 -- the two patterns don't bind the same number of variables.
@@ -172,6 +185,8 @@ unbind2 (B p1 t1) (B p2 t2) = do
             open initialCtx npf t2
           )
     Nothing -> return Nothing
+unbind2 b1 b2 = unbind2 (forceBind b1) (forceBind b2)
+{-# INLINE unbind2 #-}
 
 -- | Simultaneously 'lunbind' two patterns in two terms in the 'LFresh' monad,
 -- passing @Just (p1, t1, p2, t2)@ to the continuation such that the patterns
@@ -196,6 +211,8 @@ lunbind2 (B p1 t1) (B p2 t2) cont =
                   open initialCtx npf t2
                 )
     Nothing -> cont Nothing
+lunbind2 b1 b2 cont = lunbind2 (forceBind b1) (forceBind b2) cont
+{-# INLINE lunbind2 #-}
 
 -- | Simultaneously unbind two patterns in two terms, returning 'mzero' if
 -- the patterns don't bind the same number of variables.
