@@ -68,6 +68,8 @@ library
                        exceptions >= 0.8 && < 0.11
   hs-source-dirs:      src
   default-language:    Haskell2010
+  default-extensions:  MonoLocalBinds
+                        
   ghc-options:         -Wall -Wno-unused-imports -O2 
   if impl (ghc >= 8.0.0)
     ghc-options:     -Wcompat 
