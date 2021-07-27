@@ -36,12 +36,14 @@ import Unbound.Generics.LocallyNameless.Name
 -- 'Unbound.Generics.LocallyNameless.Operations.lunbind'
 data Bind p t where
   B :: !p -> !t -> Bind p t
+  -- ^ A normal binding, containing just the pattern and the body of the
+  -- binder.
   BindOpen :: !AlphaCtx -> ![NthPatFind] -> !p -> !t -> Bind p t
-  BindClose :: !AlphaCtx -> ![NamePatFind] -> !p -> !t -> Bind p t
   -- ^ A binding with a suspended use of the "open" operation.
   -- This suspended open is "outside" the binding, but can be used to
   -- aggregate multiple uses of open in series without traversing the
   -- entire term.
+  BindClose :: !AlphaCtx -> ![NamePatFind] -> !p -> !t -> Bind p t  
   deriving (Generic)
 
 -- | This is an internal operation. If we use any other operation
@@ -54,6 +56,8 @@ forceBind (BindOpen ctx bs p t) =
 forceBind (BindClose ctx xs p t) =
    B (closeMulti (patternCtx ctx) xs p) (closeMulti (incrLevelCtx ctx) xs t)
 {-# INLINE forceBind #-}
+
+
 
 instance (Alpha p, Alpha t, NFData p, NFData t) => NFData (Bind p t) where
   rnf (B p t) = rnf p `seq` rnf t
@@ -74,6 +78,7 @@ instance (Alpha p, Alpha t) => Alpha (Bind p t) where
   --aeq' ctx (B p1 t1) (B p2 t2) =
   --  aeq' (patternCtx ctx) p1 p2
   --    && aeq' (incrLevelCtx ctx) t1 t2
+  -- SCW: I suspect the use of forceBind here slows down aeq
   aeq' ctx b1 b2 =
     case (forceBind b1, forceBind b2) of
       (B p1 t1, B p2 t2) ->

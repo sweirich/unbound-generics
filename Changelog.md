@@ -1,6 +1,6 @@
 # BRANCH
 
-* Test with GHC-8.8.3
+* Test/benchmark with GHC-8.8.3
 * break out DisjointSet and FFM
 * lazy open/close at binding
 * Integer -> Int for Bound name levels and pattern indices
