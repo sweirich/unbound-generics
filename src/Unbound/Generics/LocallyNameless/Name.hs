@@ -3,6 +3,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE PolyKinds #-}
 
 -- |
 -- Module     : Unbound.Generics.LocallyNameless.Name
@@ -32,6 +33,7 @@ module Unbound.Generics.LocallyNameless.Name
 where
 
 import Control.DeepSeq (NFData (..))
+import Data.Kind (Type)
 import Data.Typeable (Typeable, gcast, typeOf)
 import GHC.Generics (Generic)
 
@@ -49,7 +51,7 @@ import GHC.Generics (Generic)
 -- may be extracted from patterns using
 -- 'Unbound.Generics.LocallyNameless.Alpha.isPat'.  Bound names
 -- cannot be.
-data Name a
+data Name (a :: Type)
   = Fn String !Integer -- free names
   | Bn !Int !Int -- bound names / binding level + pattern index
   deriving (Eq, Ord, Typeable, Generic)
