@@ -13,7 +13,7 @@
 --
 -- The term @'TRec' p@ is shorthand for @'Bind' (Rec p) ()@
 module Unbound.Generics.LocallyNameless.Rec
-  ( Rec,
+  ( Rec (..),
     rec,
     unrec,
     TRec (..),
