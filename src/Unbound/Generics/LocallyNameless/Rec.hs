@@ -52,7 +52,6 @@ newtype TRec p = TRec (Bind (Rec p) ())
 
 instance (Alpha a, Show a) => Show (TRec a) where
   showsPrec _ (TRec (B (Rec p) ())) = showString "[" . shows p . showString "]"
-  showsPrec p (TRec b) = showsPrec p (TRec (forceBind b))
 
 instance Alpha p => Alpha (Rec p) where
   isTerm _ = All False

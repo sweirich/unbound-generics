@@ -28,6 +28,14 @@ module Unbound.Generics.LocallyNameless.Operations
     lunbind2,
     unbind2Plus,
 
+    EBind,
+    ebind,
+    unebind,
+    lunebind,
+    unebind2,
+    lunebind2,
+    unebind2Plus,
+
     -- * Rebinding, embedding
     Rebind,
     rebind,
@@ -135,6 +143,13 @@ bind :: (Alpha p, Alpha t) => p -> t -> Bind p t
 bind p t = B p (close initialCtx (namePatFind p) t)
 {-# INLINE bind #-}
 
+-- | @'bind' p t@ closes over the variables of pattern @p@ in the term @t@
+ebind :: (Alpha p, Alpha t) => p -> t -> EBind p t
+ebind p t = EB p (close initialCtx (namePatFind p) t)
+{-# INLINE ebind #-}
+
+
+
 -- | @'unbind' b@ lets you descend beneath a binder @b :: 'Bind' p t@
 -- by returning the pair of the pattern @p@ and the term @t@ where the
 -- variables in the pattern have been made globally fresh with respect
@@ -143,11 +158,21 @@ unbind :: (Alpha p, Alpha t, Fresh m) => Bind p t -> m (p, t)
 unbind (B p t) = do
   (p', _) <- freshen p
   return (p', open initialCtx (nthPatFind p') t)
-unbind (BindOpen ctx vs p t) = do
+{-# INLINE unbind #-}
+
+-- | @'unbind' b@ lets you descend beneath a binder @b :: 'Bind' p t@
+-- by returning the pair of the pattern @p@ and the term @t@ where the
+-- variables in the pattern have been made globally fresh with respect
+-- to the freshness monad @m@.
+unebind :: (Alpha p, Alpha t, Fresh m) => EBind p t -> m (p, t)
+unebind (EB p t) = do
+  (p', _) <- freshen p
+  return (p', open initialCtx (nthPatFind p') t)
+unebind (BindOpen ctx vs p t) = do
   (p', _) <- freshen (openMulti (patternCtx ctx) vs p)
   return (p', openMulti ctx ([nthPatFind p'] <> vs) t)
-unbind b = unbind (forceBind b)
-{-# INLINE unbind #-}
+unebind b = unbind (forceBind b)
+{-# INLINE unebind #-}
 
 -- | @lunbind@ opens a binding in an 'LFresh' monad, ensuring that the
 --   names chosen for the binders are /locally/ fresh.  The components
@@ -160,10 +185,15 @@ unbind b = unbind (forceBind b)
 lunbind :: (LFresh m, Alpha p, Alpha t) => Bind p t -> ((p, t) -> m c) -> m c
 lunbind (B p t) cont =
   lfreshen p (\x _ -> cont (x, open initialCtx (nthPatFind x) t))
-lunbind (BindOpen ctx vs p t) cont =
-  lfreshen p (\x _ -> cont (x, openMulti ctx ([nthPatFind x] <> vs) t))
-lunbind b cont = lunbind (forceBind b) cont  
 {-# INLINE lunbind #-}
+
+lunebind :: (LFresh m, Alpha p, Alpha t) => EBind p t -> ((p, t) -> m c) -> m c
+lunebind (EB p t) cont =
+  lfreshen p (\x _ -> cont (x, open initialCtx (nthPatFind x) t))
+lunebind (BindOpen ctx vs p t) cont =
+  lfreshen p (\x _ -> cont (x, openMulti ctx ([nthPatFind x] <> vs) t))
+lunebind b cont = lunbind (forceBind b) cont  
+{-# INLINE lunebind #-}
 
 -- | Simultaneously unbind two patterns in two terms, returning 'Nothing' if
 -- the two patterns don't bind the same number of variables.
@@ -185,7 +215,12 @@ unbind2 (B p1 t1) (B p2 t2) = do
             open initialCtx npf t2
           )
     Nothing -> return Nothing
-unbind2 b1 b2 = unbind2 (forceBind b1) (forceBind b2)
+unebind2 ::
+  (Fresh m, Alpha p1, Alpha p2, Alpha t1, Alpha t2) =>
+  EBind p1 t1 ->
+  EBind p2 t2 ->
+  m (Maybe (p1, t1, p2, t2))
+unebind2 b1 b2 = unbind2 (forceBind b1) (forceBind b2)
 {-# INLINE unbind2 #-}
 
 -- | Simultaneously 'lunbind' two patterns in two terms in the 'LFresh' monad,
@@ -211,8 +246,14 @@ lunbind2 (B p1 t1) (B p2 t2) cont =
                   open initialCtx npf t2
                 )
     Nothing -> cont Nothing
-lunbind2 b1 b2 cont = lunbind2 (forceBind b1) (forceBind b2) cont
-{-# INLINE lunbind2 #-}
+lunebind2 ::
+  (LFresh m, Alpha p1, Alpha p2, Alpha t1, Alpha t2) =>
+  EBind p1 t1 ->
+  EBind p2 t2 ->
+  (Maybe (p1, t1, p2, t2) -> m c) ->
+  m c
+lunebind2 b1 b2 = lunbind2 (forceBind b1) (forceBind b2)
+{-# INLINE lunebind2 #-}
 
 -- | Simultaneously unbind two patterns in two terms, returning 'mzero' if
 -- the patterns don't bind the same number of variables.
@@ -222,6 +263,13 @@ unbind2Plus ::
   Bind p2 t2 ->
   m (p1, t1, p2, t2)
 unbind2Plus bnd bnd' = maybe mzero return =<< unbind2 bnd bnd'
+
+unebind2Plus ::
+  (MonadPlus m, Fresh m, Alpha p1, Alpha p2, Alpha t1, Alpha t2) =>
+  EBind p1 t1 ->
+  EBind p2 t2 ->
+  m (p1, t1, p2, t2)
+unebind2Plus bnd bnd' = maybe mzero return =<< unebind2 bnd bnd'
 
 -- | @'rebind' p1 p2@ is a smart constructor for 'Rebind'.  It
 -- captures the variables of pattern @p1@ that occur within @p2@ in

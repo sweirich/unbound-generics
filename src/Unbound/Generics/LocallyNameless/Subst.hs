@@ -46,7 +46,8 @@ module Unbound.Generics.LocallyNameless.Subst
   ( SubstName (..),
     SubstCoerce (..),
     Subst (..),
-    substBind
+    substBind, 
+    substEBind
   )
 where
 
@@ -76,7 +77,9 @@ data SubstCoerce a b where
 substBind :: (Alpha a, Alpha b, Typeable a, Subst a b) => Bind (Name a) b -> a -> b
 substBind (B (Fn _ _) t) u = substPat initialCtx u t
 substBind (B p _) _ = error $ "substBind cannot be called with pattern" ++ show p
-substBind b u = substBind (forceBind b) u
+
+substEBind :: (Alpha a, Alpha b, Typeable a, Subst a b) => EBind (Name a) b -> a -> b
+substEBind b = substBind (forceBind b)
 
 -- | Instances of @'Subst' b a@ are terms of type @a@ that may contain
 -- variables of type @b@ that may participate in capture-avoiding
@@ -282,11 +285,16 @@ instance (Subst c e) => Subst c (Shift e) where
 
 instance (Subst c b, Subst c a, Alpha a, Alpha b) => Subst c (Bind a b) where
   subst x b (B p t) = B (subst x b p) (subst x b t)
-  subst x a b = subst x a (forceBind b)
   substs ss (B p t) = B (substs ss p) (substs ss t)
-  substs ss b = substs ss (forceBind b)
   substPat c b (B p t) = B (substPat (patternCtx c) b p) (substPat (incrLevelCtx c) b t)
-  substPat c ss b = substPat c ss (forceBind b)
+  {-# INLINE subst #-}
+  {-# INLINE substs #-}
+  {-# INLINE substPat #-}
+
+instance (Subst c b, Subst c a, Alpha a, Alpha b) => Subst c (EBind a b) where
+  subst x a b = extendBind (subst x a (forceBind b))
+  substs ss b = extendBind (substs ss (forceBind b))
+  substPat c ss b = extendBind (substPat c ss (forceBind b))
   {-# INLINE subst #-}
   {-# INLINE substs #-}
   {-# INLINE substPat #-}
