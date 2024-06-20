@@ -168,9 +168,8 @@ instance Subst b (Name a) where subst _ _ = id  ; substs _ = id ; substBvs _ _ =
 instance Subst b AnyName where subst _ _ = id ; substs _ = id ; substBvs _ _ = id
 
 instance (Subst c a) => Subst c (Embed a) where
-  substBvs c us (Embed x)
-    | isTermCtx c = Embed (substBvs (termCtx c) us x)
-    | otherwise = error "Internal error: substBvs on Embed"
+  substBvs c us (Embed x) = Embed (substBvs (termCtx c) us x)
+
 
 instance (Subst c e) => Subst c (Shift e) where
   subst x b (Shift e) = Shift (subst x b e)
